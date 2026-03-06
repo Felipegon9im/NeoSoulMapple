@@ -194,6 +194,64 @@ export interface ScaleSuggestion {
   usage: string;
   scaleIndices: number[];
   rootIdx: number;
+  lick?: string;
+}
+
+const lickTemplates = {
+  minor_pentatonic:
+`e|-------------------------
+B|-------------------------
+G|-------{F+2}p{F}---------
+D|-{F}h{F+2}-------{F+2}---
+A|-------------------------
+E|-------------------------`,
+
+  major_pentatonic:
+`e|-------------------------
+B|-------------------------
+G|-------{F}h{F+2}---------
+D|-{F-1}h{F+2}-------{F+2}-
+A|-------------------------
+E|-------------------------`,
+
+  dorian:
+`e|-------------------------
+B|-------{F+1}h{F+3}-------
+G|-{F}h{F+2}-------{F+2}---
+D|-------------------------
+A|-------------------------
+E|-------------------------`,
+
+  mixolydian:
+`e|-------------------------
+B|-------{F+1}p{F}---------
+G|-{F}h{F+2}-------{F+2}---
+D|-------------------------
+A|-------------------------
+E|-------------------------`,
+
+  ionian:
+`e|-------------------------
+B|-------{F-2}h{F}---------
+G|-{F-1}h{F}-------{F}-----
+D|-------------------------
+A|-------------------------
+E|-------------------------`
+};
+
+function generateTab(rootIdx: number, stringAnchor: 6 | 5 | 4, template: string): string {
+  let baseNoteIdx = 0;
+  if (stringAnchor === 6) baseNoteIdx = 4; // E
+  if (stringAnchor === 5) baseNoteIdx = 9; // A
+  if (stringAnchor === 4) baseNoteIdx = 2; // D
+
+  let f = (rootIdx - baseNoteIdx + 12) % 12;
+  if (f < 3) f += 12; // Keep it in a comfortable position on the neck
+
+  return template.replace(/\{F([+-]\d+)?\}/g, (match, offset) => {
+    const val = offset ? f + parseInt(offset) : f;
+    return val.toString().padEnd(2, '-');
+  });
 }
 
 export function getScaleSuggestions(rootIdx: number, quality: "major" | "minor" | "dominant"): ScaleSuggestion[] {
@@ -209,42 +267,48 @@ export function getScaleSuggestions(rootIdx: number, quality: "major" | "minor" 
       notes: getNotes(rootIdx, scaleFormulas.ionian),
       usage: "Base harmônica, repouso e melodia principal.",
       scaleIndices: getIndices(rootIdx, scaleFormulas.ionian),
-      rootIdx: (rootIdx + 120) % 12
+      rootIdx: (rootIdx + 120) % 12,
+      lick: generateTab(rootIdx, 4, lickTemplates.ionian)
     });
     suggestions.push({
       name: `${getNote(rootIdx - 3)} Menor Pentatônica`,
       notes: getNotes(rootIdx - 3, scaleFormulas.minor_pentatonic),
       usage: "Relativo menor (VI grau). Sonoridade segura e familiar.",
       scaleIndices: getIndices(rootIdx - 3, scaleFormulas.minor_pentatonic),
-      rootIdx: (rootIdx - 3 + 120) % 12
+      rootIdx: (rootIdx - 3 + 120) % 12,
+      lick: generateTab(rootIdx - 3, 6, lickTemplates.minor_pentatonic)
     });
     suggestions.push({
       name: `${getNote(rootIdx + 4)} Menor Pentatônica`,
       notes: getNotes(rootIdx + 4, scaleFormulas.minor_pentatonic),
       usage: "Pentatônica da 3ª. Destaca a 7M e 9ª (sonoridade jazz/neo soul).",
       scaleIndices: getIndices(rootIdx + 4, scaleFormulas.minor_pentatonic),
-      rootIdx: (rootIdx + 4 + 120) % 12
+      rootIdx: (rootIdx + 4 + 120) % 12,
+      lick: generateTab(rootIdx + 4, 6, lickTemplates.minor_pentatonic)
     });
     suggestions.push({
       name: `${getNote(rootIdx + 7)} Maior Pentatônica`,
       notes: getNotes(rootIdx + 7, scaleFormulas.major_pentatonic),
       usage: "Pentatônica da 5ª. Som brilhante e aberto.",
       scaleIndices: getIndices(rootIdx + 7, scaleFormulas.major_pentatonic),
-      rootIdx: (rootIdx + 7 + 120) % 12
+      rootIdx: (rootIdx + 7 + 120) % 12,
+      lick: generateTab(rootIdx + 7, 5, lickTemplates.major_pentatonic)
     });
     suggestions.push({
       name: `${getNote(rootIdx + 2)} Menor Pentatônica`,
       notes: getNotes(rootIdx + 2, scaleFormulas.minor_pentatonic),
       usage: "Pentatônica do II grau. Adiciona a 6ª e 9ª ao acorde.",
       scaleIndices: getIndices(rootIdx + 2, scaleFormulas.minor_pentatonic),
-      rootIdx: (rootIdx + 2 + 120) % 12
+      rootIdx: (rootIdx + 2 + 120) % 12,
+      lick: generateTab(rootIdx + 2, 6, lickTemplates.minor_pentatonic)
     });
     suggestions.push({
       name: `${getNote(rootIdx + 1)} Menor Pentatônica`,
       notes: getNotes(rootIdx + 1, scaleFormulas.minor_pentatonic),
       usage: "Tensão (Approach). Use para criar instabilidade antes de resolver.",
       scaleIndices: getIndices(rootIdx + 1, scaleFormulas.minor_pentatonic),
-      rootIdx: (rootIdx + 1 + 120) % 12
+      rootIdx: (rootIdx + 1 + 120) % 12,
+      lick: generateTab(rootIdx + 1, 6, lickTemplates.minor_pentatonic)
     });
   } else if (quality === "minor") {
     suggestions.push({
@@ -252,35 +316,40 @@ export function getScaleSuggestions(rootIdx: number, quality: "major" | "minor" 
       notes: getNotes(rootIdx, scaleFormulas.dorian),
       usage: "Base harmônica. Som característico do Neo Soul e R&B.",
       scaleIndices: getIndices(rootIdx, scaleFormulas.dorian),
-      rootIdx: (rootIdx + 120) % 12
+      rootIdx: (rootIdx + 120) % 12,
+      lick: generateTab(rootIdx, 4, lickTemplates.dorian)
     });
     suggestions.push({
       name: `${getNote(rootIdx)} Menor Pentatônica`,
       notes: getNotes(rootIdx, scaleFormulas.minor_pentatonic),
       usage: "Sonoridade bluesy e direta.",
       scaleIndices: getIndices(rootIdx, scaleFormulas.minor_pentatonic),
-      rootIdx: (rootIdx + 120) % 12
+      rootIdx: (rootIdx + 120) % 12,
+      lick: generateTab(rootIdx, 6, lickTemplates.minor_pentatonic)
     });
     suggestions.push({
       name: `${getNote(rootIdx + 7)} Menor Pentatônica`,
       notes: getNotes(rootIdx + 7, scaleFormulas.minor_pentatonic),
       usage: "Pentatônica da 5ª. Destaca a 9ª e 11ª do acorde menor.",
       scaleIndices: getIndices(rootIdx + 7, scaleFormulas.minor_pentatonic),
-      rootIdx: (rootIdx + 7 + 120) % 12
+      rootIdx: (rootIdx + 7 + 120) % 12,
+      lick: generateTab(rootIdx + 7, 6, lickTemplates.minor_pentatonic)
     });
     suggestions.push({
       name: `${getNote(rootIdx + 2)} Menor Pentatônica`,
       notes: getNotes(rootIdx + 2, scaleFormulas.minor_pentatonic),
       usage: "Pentatônica do II grau. Adiciona a 6ª maior (som Dórico).",
       scaleIndices: getIndices(rootIdx + 2, scaleFormulas.minor_pentatonic),
-      rootIdx: (rootIdx + 2 + 120) % 12
+      rootIdx: (rootIdx + 2 + 120) % 12,
+      lick: generateTab(rootIdx + 2, 6, lickTemplates.minor_pentatonic)
     });
     suggestions.push({
       name: `${getNote(rootIdx + 1)} Menor Pentatônica`,
       notes: getNotes(rootIdx + 1, scaleFormulas.minor_pentatonic),
       usage: "Tensão (Approach). Outside playing para criar surpresa.",
       scaleIndices: getIndices(rootIdx + 1, scaleFormulas.minor_pentatonic),
-      rootIdx: (rootIdx + 1 + 120) % 12
+      rootIdx: (rootIdx + 1 + 120) % 12,
+      lick: generateTab(rootIdx + 1, 6, lickTemplates.minor_pentatonic)
     });
   } else if (quality === "dominant") {
     suggestions.push({
@@ -288,35 +357,40 @@ export function getScaleSuggestions(rootIdx: number, quality: "major" | "minor" 
       notes: getNotes(rootIdx, scaleFormulas.mixolydian),
       usage: "Base harmônica. Som dominante padrão.",
       scaleIndices: getIndices(rootIdx, scaleFormulas.mixolydian),
-      rootIdx: (rootIdx + 120) % 12
+      rootIdx: (rootIdx + 120) % 12,
+      lick: generateTab(rootIdx, 4, lickTemplates.mixolydian)
     });
     suggestions.push({
       name: `${getNote(rootIdx)} Menor Pentatônica`,
       notes: getNotes(rootIdx, scaleFormulas.minor_pentatonic),
       usage: "Sonoridade Blues/Rock. Choque da 3ª menor com a 3ª maior.",
       scaleIndices: getIndices(rootIdx, scaleFormulas.minor_pentatonic),
-      rootIdx: (rootIdx + 120) % 12
+      rootIdx: (rootIdx + 120) % 12,
+      lick: generateTab(rootIdx, 6, lickTemplates.minor_pentatonic)
     });
     suggestions.push({
       name: `${getNote(rootIdx + 3)} Menor Pentatônica`,
       notes: getNotes(rootIdx + 3, scaleFormulas.minor_pentatonic),
       usage: "Pentatônica da 3ª menor. Som alterado (b9, #9).",
       scaleIndices: getIndices(rootIdx + 3, scaleFormulas.minor_pentatonic),
-      rootIdx: (rootIdx + 3 + 120) % 12
+      rootIdx: (rootIdx + 3 + 120) % 12,
+      lick: generateTab(rootIdx + 3, 6, lickTemplates.minor_pentatonic)
     });
     suggestions.push({
       name: `${getNote(rootIdx + 7)} Menor Pentatônica`,
       notes: getNotes(rootIdx + 7, scaleFormulas.minor_pentatonic),
       usage: "Pentatônica da 5ª. Som suspenso (11ª).",
       scaleIndices: getIndices(rootIdx + 7, scaleFormulas.minor_pentatonic),
-      rootIdx: (rootIdx + 7 + 120) % 12
+      rootIdx: (rootIdx + 7 + 120) % 12,
+      lick: generateTab(rootIdx + 7, 6, lickTemplates.minor_pentatonic)
     });
     suggestions.push({
       name: `${getNote(rootIdx + 1)} Menor Pentatônica`,
       notes: getNotes(rootIdx + 1, scaleFormulas.minor_pentatonic),
       usage: "Tensão (Altered scale sound). Resolve meio tom abaixo.",
       scaleIndices: getIndices(rootIdx + 1, scaleFormulas.minor_pentatonic),
-      rootIdx: (rootIdx + 1 + 120) % 12
+      rootIdx: (rootIdx + 1 + 120) % 12,
+      lick: generateTab(rootIdx + 1, 6, lickTemplates.minor_pentatonic)
     });
   }
 
@@ -330,6 +404,25 @@ export function getChordTones(rootIdx: number, quality: "major" | "minor" | "dom
   else if (quality === "dominant") intervals = [0, 4, 7, 10];
   
   return intervals.map(i => (rootIdx + i) % 12);
+}
+
+export function getIIVI(rootIdx: number, quality: string) {
+  const getNoteName = (idx: number) => ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"][(idx % 12 + 12) % 12];
+
+  if (quality === "major") {
+    return [
+      { rootIdx: (rootIdx + 2) % 12, quality: "minor", name: `${getNoteName(rootIdx + 2)}m7` },
+      { rootIdx: (rootIdx + 7) % 12, quality: "dominant", name: `${getNoteName(rootIdx + 7)}7` },
+      { rootIdx: rootIdx, quality: "major", name: `${getNoteName(rootIdx)}maj7` }
+    ];
+  } else if (quality === "minor") {
+    return [
+      { rootIdx: (rootIdx + 2) % 12, quality: "half-diminished", name: `${getNoteName(rootIdx + 2)}m7b5` },
+      { rootIdx: (rootIdx + 7) % 12, quality: "dominant", name: `${getNoteName(rootIdx + 7)}7` },
+      { rootIdx: rootIdx, quality: "minor", name: `${getNoteName(rootIdx)}m7` }
+    ];
+  }
+  return null;
 }
 
 export function getMajorScaleIndices(rootIndex: number) {

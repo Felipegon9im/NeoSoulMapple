@@ -3,7 +3,7 @@ import { guitarTuning, getNoteName } from "../lib/chordLibrary";
 
 interface FretboardProps {
   scaleIndices: number[];
-  targetRootIndex: number;
+  targetRootIndex?: number;
   chordIndices?: number[];
 }
 
@@ -19,8 +19,15 @@ export function Fretboard({ scaleIndices, targetRootIndex, chordIndices = [] }: 
             const isNut = f === 0;
             const noteIdx = (stringBaseNoteIndex + f) % 12;
             const inScale = scaleIndices.includes(noteIdx);
-            const isRoot = noteIdx === targetRootIndex;
+            const isRoot = targetRootIndex !== undefined && noteIdx === targetRootIndex;
             const isChordTone = chordIndices.includes(noteIdx);
+
+            let bgColor = "bg-purple-400 shadow-[0_0_8px_rgba(192,132,252,0.6)]";
+            if (isChordTone) {
+              bgColor = "bg-teal-400 shadow-[0_0_8px_rgba(45,212,191,0.6)]";
+            } else if (isRoot) {
+              bgColor = "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]";
+            }
 
             return (
               <div
@@ -31,11 +38,7 @@ export function Fretboard({ scaleIndices, targetRootIndex, chordIndices = [] }: 
                   <div
                     className={`
                       w-[18px] h-[18px] rounded-full flex justify-center items-center z-10 text-[10px] font-bold text-black shadow-md
-                      ${isRoot 
-                        ? "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]" 
-                        : isChordTone 
-                          ? "bg-teal-400 shadow-[0_0_8px_rgba(45,212,191,0.6)]" 
-                          : "bg-purple-400 shadow-[0_0_8px_rgba(192,132,252,0.6)]"}
+                      ${bgColor}
                     `}
                   >
                     {getNoteName(noteIdx)}

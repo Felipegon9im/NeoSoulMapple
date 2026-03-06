@@ -2,6 +2,9 @@ import React, { useState } from "react";
 import { ChordInput } from "./components/ChordInput";
 import { ChordCard } from "./components/ChordCard";
 import { FavoritesView } from "./components/FavoritesView";
+import { ProgressionPlayer } from "./components/ProgressionPlayer";
+import { Reharmonizer } from "./components/Reharmonizer";
+import { StudyProgressions } from "./components/StudyProgressions";
 import { motion } from "motion/react";
 import { Search, Heart } from "lucide-react";
 
@@ -55,12 +58,24 @@ export default function App() {
           </div>
 
           {view === 'search' && (
-            <ChordInput value={progression} onChange={setProgression} />
+            <div className="w-full max-w-4xl flex flex-col items-center gap-4">
+              <ChordInput value={progression} onChange={setProgression} />
+              <StudyProgressions onSelect={(chords) => {
+                setProgression(chords);
+                // Also trigger search immediately if possible, but since ChordInput handles parsing via useEffect, setting progression is enough.
+              }} />
+            </div>
           )}
         </motion.div>
 
         {view === 'search' ? (
           <div className="w-full max-w-4xl flex flex-col gap-8">
+            {chords.length > 0 && (
+              <div className="flex flex-col gap-4">
+                <ProgressionPlayer chords={chords} />
+                <Reharmonizer chords={chords} onApply={setProgression} />
+              </div>
+            )}
             {chords.map((chord, index) => (
               <ChordCard key={`${chord}-${index}`} chordStr={chord} />
             ))}
