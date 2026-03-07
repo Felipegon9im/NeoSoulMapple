@@ -1,12 +1,29 @@
 let audioCtx: AudioContext | null = null;
+let isUnlocked = false;
 
 export function initAudio() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
   }
+  
   if (audioCtx.state === 'suspended') {
     audioCtx.resume();
   }
+
+  // Unlock audio on iOS
+  if (!isUnlocked && audioCtx) {
+    const buffer = audioCtx.createBuffer(1, 1, 22050);
+    const node = audioCtx.createBufferSource();
+    node.buffer = buffer;
+    node.connect(audioCtx.destination);
+    if (node.start) {
+      node.start(0);
+    } else {
+      (node as any).noteOn(0);
+    }
+    isUnlocked = true;
+  }
+
   return audioCtx;
 }
 
