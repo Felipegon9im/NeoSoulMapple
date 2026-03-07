@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { Play, Settings2, Square } from "lucide-react";
 import { parseChord, getIIVI } from "../lib/chordLibrary";
 import { playProgression, initAudio } from "../lib/audio";
-import { HarmonicGPS } from "./HarmonicGPS";
+import { AdvancedHarmonicGPS } from "./AdvancedHarmonicGPS";
 
 interface ProgressionPlayerProps {
   chords: string[];
@@ -143,7 +143,7 @@ export function ProgressionPlayer({ chords }: ProgressionPlayerProps) {
       {/* Timeline UI */}
       {sequence.length > 0 && (
         <>
-          <HarmonicGPS sequence={sequence} currentIndex={currentChordIndex} />
+          <AdvancedHarmonicGPS sequence={sequence} currentIndex={currentChordIndex} />
           <div className="w-full bg-black/40 rounded-xl p-4 border border-white/5 relative overflow-hidden">
             {/* Progress Bar Background */}
             <div 
