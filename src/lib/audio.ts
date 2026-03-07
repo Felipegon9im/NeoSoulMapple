@@ -11,11 +11,15 @@ export function initAudio() {
 }
 
 function getFreq(noteIdx: number, octave: number) {
+  if (isNaN(noteIdx) || isNaN(octave)) return 440;
   const midiNote = 12 * (octave + 1) + noteIdx;
-  return 440 * Math.pow(2, (midiNote - 69) / 12);
+  const freq = 440 * Math.pow(2, (midiNote - 69) / 12);
+  return isFinite(freq) && freq > 0 ? freq : 440;
 }
 
 export function playTone(freq: number, time: number, duration: number, vol = 0.3, type: OscillatorType = 'triangle') {
+  if (!isFinite(freq) || !isFinite(time) || !isFinite(duration) || !isFinite(vol) || freq <= 0) return;
+
   const ctx = initAudio();
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
@@ -24,11 +28,14 @@ export function playTone(freq: number, time: number, duration: number, vol = 0.3
   osc.type = type;
   osc.frequency.value = freq;
   
+  // Pluck-like filter envelope
   filter.type = 'lowpass';
-  filter.frequency.value = type === 'sawtooth' ? 1500 : 3000;
+  filter.frequency.setValueAtTime(type === 'sawtooth' ? 4000 : 2000, time);
+  filter.frequency.exponentialRampToValueAtTime(400, time + 0.5);
   
+  // Pluck-like amplitude envelope (fast attack, exponential decay)
   gain.gain.setValueAtTime(0, time);
-  gain.gain.linearRampToValueAtTime(vol, time + 0.02);
+  gain.gain.linearRampToValueAtTime(vol, time + 0.01);
   gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
   
   osc.connect(filter);
@@ -58,56 +65,96 @@ export function playMetronome(time: number) {
   osc.stop(time + 0.05);
 }
 
-export function playChord(rootIdx: number, quality: string) {
+export function playChord(rootIdx: number, quality: string, customIntervals?: number[]) {
   const ctx = initAudio();
   const now = ctx.currentTime;
   
-  let intervals = [0, 4, 7, 11]; // major
-  if (quality === 'minor') intervals = [0, 3, 7, 10];
-  else if (quality === 'dominant') intervals = [0, 4, 7, 10];
+  let intervals = customIntervals || [0, 4, 7, 11]; // major
+  if (!customIntervals) {
+    if (quality === 'minor') intervals = [0, 3, 7, 10];
+    else if (quality === 'dominant') intervals = [0, 4, 7, 10];
+    else if (quality === 'half-diminished') intervals = [0, 3, 6, 10];
+  }
   
-  // Play a strum effect
+  if (!intervals || intervals.length === 0) {
+    intervals = [0, 4, 7];
+  }
+  
+  // Play an arpeggio (dedilhado)
+  const arpDelay = 0.15; // 150ms between notes
   intervals.forEach((interval, i) => {
     const freq = getFreq((rootIdx + interval) % 12, 3 + Math.floor((rootIdx + interval)/12));
-    playTone(freq, now + i * 0.04, 2.5, 0.2, 'sine');
-    playTone(freq, now + i * 0.04, 2.5, 0.1, 'triangle');
+    playTone(freq, now + i * arpDelay, 3.0, 0.2, 'sine');
+    playTone(freq, now + i * arpDelay, 3.0, 0.1, 'triangle');
   });
 }
 
 export function playProgression(chords: {rootIdx: number, quality: string}[], bpm: number, beatsPerMeasure: number = 4) {
+  const customChords = chords.map(c => ({ ...c, beats: beatsPerMeasure }));
+  playCustomProgression(customChords, bpm);
+}
+
+export function playCustomProgression(chords: {rootIdx: number, quality: string, beats: number, intervals?: number[]}[], bpm: number) {
   const ctx = initAudio();
   const now = ctx.currentTime;
   const beatLen = 60 / bpm;
   
-  chords.forEach((chord, index) => {
-    const timeOffset = index * beatsPerMeasure * beatLen;
-    
+  let timeOffset = 0;
+  
+  chords.forEach((chord) => {
     // Metronome beats per chord
-    for (let i = 0; i < beatsPerMeasure; i++) {
+    for (let i = 0; i < chord.beats; i++) {
       playMetronome(now + timeOffset + i * beatLen);
     }
     
-    let intervals = [0, 4, 7, 11]; // major
-    if (chord.quality === 'minor') intervals = [0, 3, 7, 10];
-    else if (chord.quality === 'dominant') intervals = [0, 4, 7, 10];
-    else if (chord.quality === 'half-diminished') intervals = [0, 3, 6, 10];
+    let intervals = chord.intervals || [0, 4, 7, 11]; // major
+    if (!chord.intervals) {
+      if (chord.quality === 'minor') intervals = [0, 3, 7, 10];
+      else if (chord.quality === 'dominant') intervals = [0, 4, 7, 10];
+      else if (chord.quality === 'half-diminished') intervals = [0, 3, 6, 10];
+    }
     
-    // Comping
-    const playComp = (time: number, dur: number) => {
-      intervals.forEach((interval, i) => {
-        const freq = getFreq((chord.rootIdx + interval) % 12, 3 + Math.floor((chord.rootIdx + interval)/12));
-        playTone(freq, time + i * 0.02, dur, 0.1, 'sine');
-        playTone(freq, time + i * 0.02, dur, 0.05, 'sawtooth');
-      });
+    // Ensure intervals array is valid and not empty
+    if (!intervals || intervals.length === 0) {
+      intervals = [0, 4, 7];
+    }
+    
+    // Arpeggio (dedilhado) pattern
+    const playArp = (time: number) => {
+      const bassFreq = getFreq(chord.rootIdx, 2);
+      // Bass rings for the duration of the chord + a little tail
+      playTone(bassFreq, time, chord.beats * beatLen + 0.5, 0.25, 'sine');
+      playTone(bassFreq, time, chord.beats * beatLen + 0.5, 0.1, 'triangle');
+
+      if (chord.beats <= 1) {
+        // Quick roll (strum) for 1 beat
+        intervals.forEach((interval, i) => {
+          const freq = getFreq((chord.rootIdx + interval) % 12, 3 + Math.floor((chord.rootIdx + interval)/12));
+          playTone(freq, time + i * 0.03, beatLen + 0.5, 0.15, 'sine');
+          playTone(freq, time + i * 0.03, beatLen + 0.5, 0.08, 'triangle');
+        });
+      } else {
+        // Arpeggio for 2 or more beats
+        const arpDelay = beatLen / 2; // Eighth notes
+        const totalNotes = chord.beats * 2;
+        
+        // Pattern: root, 3rd, 5th, 7th, 5th, 3rd, root, 3rd...
+        const pattern = [0, 1, 2, 3, 2, 1, 0, 1, 2, 3, 2, 1, 0, 1, 2, 3]; 
+        
+        for (let i = 0; i < totalNotes; i++) {
+          const interval = intervals[pattern[i % pattern.length]];
+          const freq = getFreq((chord.rootIdx + interval) % 12, 3 + Math.floor((chord.rootIdx + interval)/12));
+          
+          // Let each note ring for a bit
+          playTone(freq, time + i * arpDelay, beatLen * 1.5, 0.15, 'sine');
+          playTone(freq, time + i * arpDelay, beatLen * 1.5, 0.08, 'triangle');
+        }
+      }
     };
 
-    playComp(now + timeOffset, beatLen * 1.5); // Beat 1
-    if (beatsPerMeasure >= 3) {
-      playComp(now + timeOffset + 1.5 * beatLen, beatLen * 1.5); // Beat 2 "and"
-    }
-    if (beatsPerMeasure >= 5) {
-      playComp(now + timeOffset + 3.5 * beatLen, beatLen * 1.5); // Beat 4 "and"
-    }
+    playArp(now + timeOffset);
+    
+    timeOffset += chord.beats * beatLen;
   });
 }
 
@@ -134,21 +181,28 @@ export function playLick(scaleRootIdx: number, scaleName: string, chordRootIdx: 
       else if (chord.quality === 'dominant') intervals = [0, 4, 7, 10];
       else if (chord.quality === 'half-diminished') intervals = [0, 3, 6, 10];
       
-      const playComp = (time: number, dur: number) => {
-        intervals.forEach((interval, i) => {
+      if (!intervals || intervals.length === 0) {
+        intervals = [0, 4, 7];
+      }
+      
+      const playArp = (time: number) => {
+        const bassFreq = getFreq(chord.rootIdx, 2);
+        playTone(bassFreq, time, beatsPerMeasure * beatLen + 0.5, 0.25, 'sine');
+        playTone(bassFreq, time, beatsPerMeasure * beatLen + 0.5, 0.1, 'triangle');
+
+        const arpDelay = beatLen / 2;
+        const totalNotes = beatsPerMeasure * 2;
+        const pattern = [0, 1, 2, 3, 2, 1, 0, 1, 2, 3, 2, 1, 0, 1, 2, 3];
+        
+        for (let i = 0; i < totalNotes; i++) {
+          const interval = intervals[pattern[i % pattern.length]];
           const freq = getFreq((chord.rootIdx + interval) % 12, 3 + Math.floor((chord.rootIdx + interval)/12));
-          playTone(freq, time + i * 0.02, dur, 0.1, 'sine');
-          playTone(freq, time + i * 0.02, dur, 0.05, 'sawtooth');
-        });
+          playTone(freq, time + i * arpDelay, beatLen * 1.5, 0.15, 'sine');
+          playTone(freq, time + i * arpDelay, beatLen * 1.5, 0.08, 'triangle');
+        }
       };
 
-      playComp(now + chordTimeOffset, beatLen * 1.5);
-      if (beatsPerMeasure >= 3) {
-        playComp(now + chordTimeOffset + 1.5 * beatLen, beatLen * 1.5);
-      }
-      if (beatsPerMeasure >= 5) {
-        playComp(now + chordTimeOffset + 3.5 * beatLen, beatLen * 1.5);
-      }
+      playArp(now + chordTimeOffset);
     });
     
     timeOffset = 2 * beatsPerMeasure * beatLen; // 2 measures of preparation
@@ -163,21 +217,29 @@ export function playLick(scaleRootIdx: number, scaleName: string, chordRootIdx: 
   let intervals = [0, 4, 7, 11];
   if (chordQuality === 'minor') intervals = [0, 3, 7, 10];
   else if (chordQuality === 'dominant') intervals = [0, 4, 7, 10];
+  else if (chordQuality === 'half-diminished') intervals = [0, 3, 6, 10];
   
-  const playComp = (time: number, dur: number) => {
-    intervals.forEach((interval, i) => {
+  if (!intervals || intervals.length === 0) {
+    intervals = [0, 4, 7];
+  }
+  
+  const playArp = (time: number) => {
+    const bassFreq = getFreq(chordRootIdx, 2);
+    playTone(bassFreq, time, beatsPerMeasure * beatLen + 0.5, 0.25, 'sine');
+    playTone(bassFreq, time, beatsPerMeasure * beatLen + 0.5, 0.1, 'triangle');
+
+    const arpDelay = beatLen / 2;
+    const totalNotes = beatsPerMeasure * 2;
+    const pattern = [0, 1, 2, 3, 2, 1, 0, 1, 2, 3, 2, 1, 0, 1, 2, 3];
+    
+    for (let i = 0; i < totalNotes; i++) {
+      const interval = intervals[pattern[i % pattern.length]];
       const freq = getFreq((chordRootIdx + interval) % 12, 3 + Math.floor((chordRootIdx + interval)/12));
-      playTone(freq, time + i * 0.02, dur, 0.1, 'sine');
-      playTone(freq, time + i * 0.02, dur, 0.05, 'sawtooth');
-    });
+      playTone(freq, time + i * arpDelay, beatLen * 1.5, 0.15, 'sine');
+      playTone(freq, time + i * arpDelay, beatLen * 1.5, 0.08, 'triangle');
+    }
   };
-  playComp(now + timeOffset, beatLen * 1.5);
-  if (beatsPerMeasure >= 3) {
-    playComp(now + timeOffset + 1.5 * beatLen, beatLen * 1.5);
-  }
-  if (beatsPerMeasure >= 5) {
-    playComp(now + timeOffset + 3.5 * beatLen, beatLen * 1.5);
-  }
+  playArp(now + timeOffset);
 
   // Play lick notes
   let pattern: { offset: number, time: number, dur: number }[] = [];

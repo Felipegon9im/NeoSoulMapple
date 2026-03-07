@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BookOpen, Circle, Music, ArrowRight, X } from 'lucide-react';
+import { BookOpen, Circle, Music, ArrowRight, X, Shuffle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 const SUGGESTIONS = [
@@ -32,6 +32,19 @@ const SUGGESTIONS = [
       { name: "Coltrane Changes (Giant Steps)", description: "Modulação em terças maiores", chords: "Bmaj7 D7 Gmaj7 Bb7 Ebmaj7" },
       { name: "Pop Clássico (I-V-vi-IV)", description: "A progressão de 4 acordes mais famosa", chords: "C G Am F" },
       { name: "Neo Soul Clássico", description: "Progressão menor com extensões", chords: "Am11 Dm9 Gm11 C9" },
+    ]
+  },
+  {
+    title: "Empréstimos Modais",
+    icon: <Shuffle size={16} />,
+    items: [
+      { name: "Subdominante Menor (IVm)", description: "O famoso acorde 'triste' (I - IV - iv - I). Traz uma sensação de nostalgia e melancolia.", chords: "Cmaj7 Fmaj7 Fm6 Cmaj7" },
+      { name: "Cadência Mario Bros (bVI - bVII - I)", description: "Empréstimo do modo Eólio. Sonoridade épica, triunfante e heroica.", chords: "Cmaj7 Abmaj7 Bbmaj7 Cmaj7" },
+      { name: "Acorde bIImaj7 (Napolitano)", description: "Substituição de subdominante. Cria uma tensão flutuante e jazzística antes de resolver.", chords: "Cmaj7 Dbmaj7 Cmaj7" },
+      { name: "Acorde bIIImaj7", description: "Empréstimo do modo Dórico/Eólio. Traz uma cor de blues/rock para o campo maior.", chords: "Cmaj7 Ebmaj7 Dm7 G7" },
+      { name: "Backdoor Progression (iv7 - bVII7 - I)", description: "Empréstimo do modo Mixolídio. Resolução suave e surpreendente, muito comum no Jazz e R&B.", chords: "Fm7 Bb7 Cmaj7" },
+      { name: "Dominante Menor (v menor)", description: "Empréstimo do modo Mixolídio/Eólio. Tira a força do V7, criando uma cadência mais suave e pop.", chords: "Cmaj7 Gm7 Fmaj7" },
+      { name: "Empréstimo Lídio (II maior)", description: "O acorde II maior (sem ser dominante secundário). Traz uma sensação brilhante e sonhadora.", chords: "Cmaj7 Dmaj7 Cmaj7" },
     ]
   }
 ];
@@ -75,7 +88,7 @@ export function StudyProgressions({ onSelect }: StudyProgressionsProps) {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {SUGGESTIONS.map((category, idx) => (
                   <div key={idx} className="flex flex-col gap-4">
                     <h4 className="flex items-center gap-2 text-zinc-300 font-bold uppercase tracking-wider text-xs border-b border-white/10 pb-2">

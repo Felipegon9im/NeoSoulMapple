@@ -100,15 +100,77 @@ export function getNoteIndex(noteStr: string) {
   return idx !== -1 ? idx : 0;
 }
 
+export function getChordIntervals(ext: string): number[] {
+  ext = ext.toLowerCase().trim();
+  
+  // Base triads
+  if (ext === "" || ext === "m" || ext === "maj") {
+    if (ext === "m") return [0, 3, 7];
+    return [0, 4, 7];
+  }
+  if (ext === "min" || ext === "-") return [0, 3, 7];
+  if (ext === "dim" || ext === "o") return [0, 3, 6];
+  if (ext === "aug" || ext === "+") return [0, 4, 8];
+  
+  // Sus chords
+  if (ext === "sus4" || ext === "sus") return [0, 5, 7];
+  if (ext === "sus2") return [0, 2, 7];
+  if (ext === "7sus4" || ext === "7sus") return [0, 5, 7, 10];
+  
+  // 6th chords
+  if (ext === "6") return [0, 4, 7, 9];
+  if (ext === "m6" || ext === "-6") return [0, 3, 7, 9];
+  
+  // 7th chords
+  if (ext === "maj7" || ext === "m7" || ext === "maj" || ext === "^7") return [0, 4, 7, 11];
+  if (ext === "m7" || ext === "-7" || ext === "min7") return [0, 3, 7, 10];
+  if (ext === "7" || ext === "dom7") return [0, 4, 7, 10];
+  if (ext === "m7b5" || ext === "-7b5" || ext === "ø" || ext === "hdim7") return [0, 3, 6, 10];
+  if (ext === "dim7" || ext === "o7") return [0, 3, 6, 9];
+  if (ext === "mmaj7" || ext === "-maj7") return [0, 3, 7, 11];
+  
+  // 9th chords
+  if (ext === "maj9" || ext === "^9") return [0, 4, 7, 11, 14];
+  if (ext === "m9" || ext === "-9" || ext === "min9") return [0, 3, 7, 10, 14];
+  if (ext === "9") return [0, 4, 7, 10, 14];
+  if (ext === "7b9") return [0, 4, 7, 10, 13];
+  if (ext === "7#9") return [0, 4, 7, 10, 15];
+  
+  // 11th chords
+  if (ext === "m11" || ext === "-11" || ext === "min11") return [0, 3, 7, 10, 14, 17];
+  if (ext === "11") return [0, 4, 7, 10, 14, 17];
+  if (ext === "maj11") return [0, 4, 7, 11, 14, 17];
+  
+  // 13th chords
+  if (ext === "maj13") return [0, 4, 7, 11, 14, 21];
+  if (ext === "m13" || ext === "-13") return [0, 3, 7, 10, 14, 21];
+  if (ext === "13") return [0, 4, 7, 10, 14, 21];
+  
+  // Altered
+  if (ext === "7alt" || ext === "alt") return [0, 4, 10, 13, 15]; // Root, 3rd, b7, b9, #9
+  
+  // Fallbacks based on string matching
+  if (ext.includes("maj") || ext.includes("^")) return [0, 4, 7, 11];
+  if (ext.includes("m7b5") || ext.includes("ø")) return [0, 3, 6, 10];
+  if (ext.startsWith("m") || ext.startsWith("-")) return [0, 3, 7, 10];
+  if (ext.includes("dim") || ext.includes("o")) return [0, 3, 6, 9];
+  if (ext.includes("7") || ext.includes("9") || ext.includes("11") || ext.includes("13")) return [0, 4, 7, 10];
+  
+  return [0, 4, 7]; // Default to major triad
+}
+
 export function parseChord(chordRaw: string) {
   const match = chordRaw.match(/^([A-G][b#]?)(.*)$/i);
   if (!match) return null;
   const ext = match[2].toLowerCase();
   
   let type = "maj7";
-  let quality: "major" | "minor" | "dominant" = "major";
+  let quality: "major" | "minor" | "dominant" | "half-diminished" = "major";
 
-  if (ext.startsWith("m") && !ext.startsWith("maj") || ext.includes("min") || ext.includes("-")) {
+  if (ext.includes("m7b5") || ext.includes("ø") || ext.includes("hdim")) {
+    type = "m11";
+    quality = "half-diminished";
+  } else if (ext.startsWith("m") && !ext.startsWith("maj") || ext.includes("min") || ext.includes("-")) {
     type = "m11";
     quality = "minor";
   } else if ((ext.includes("11") && !ext.includes("maj")) || ext.includes("sus") || ext.match(/^[79]/)) {
@@ -119,10 +181,12 @@ export function parseChord(chordRaw: string) {
     quality = "major";
   }
 
-  return { original: chordRaw, rootIdx: getNoteIndex(match[1]), type, quality };
+  const intervals = getChordIntervals(match[2]);
+
+  return { original: chordRaw, rootIdx: getNoteIndex(match[1]), type, quality, intervals };
 }
 
-export function getChordRelations(rootIdx: number, quality: "major" | "minor" | "dominant") {
+export function getChordRelations(rootIdx: number, quality: "major" | "minor" | "dominant" | "half-diminished") {
   const getNote = (idx: number) => displayNotes[(idx + 120) % 12];
   
   let relative = "";
@@ -137,6 +201,9 @@ export function getChordRelations(rootIdx: number, quality: "major" | "minor" | 
   } else if (quality === "dominant") {
     relative = "-";
     ii_V_I = `${getNote(rootIdx - 5)}m7 - ${getNote(rootIdx)}7 - ${getNote(rootIdx - 7)}maj7`;
+  } else if (quality === "half-diminished") {
+    relative = `${getNote(rootIdx + 3)}m7`;
+    ii_V_I = "-";
   }
 
   return { relative, ii_V_I };
@@ -254,7 +321,7 @@ function generateTab(rootIdx: number, stringAnchor: 6 | 5 | 4, template: string)
   });
 }
 
-export function getScaleSuggestions(rootIdx: number, quality: "major" | "minor" | "dominant"): ScaleSuggestion[] {
+export function getScaleSuggestions(rootIdx: number, quality: "major" | "minor" | "dominant" | "half-diminished"): ScaleSuggestion[] {
   const getNote = (idx: number) => displayNotes[(idx + 120) % 12];
   const getNotes = (root: number, formula: number[]) => formula.map(i => getNote(root + i));
   const getIndices = (root: number, formula: number[]) => formula.map(i => (root + i + 120) % 12);
@@ -397,11 +464,12 @@ export function getScaleSuggestions(rootIdx: number, quality: "major" | "minor" 
   return suggestions;
 }
 
-export function getChordTones(rootIdx: number, quality: "major" | "minor" | "dominant") {
+export function getChordTones(rootIdx: number, quality: "major" | "minor" | "dominant" | "half-diminished") {
   let intervals: number[] = [];
   if (quality === "major") intervals = [0, 4, 7, 11];
   else if (quality === "minor") intervals = [0, 3, 7, 10];
   else if (quality === "dominant") intervals = [0, 4, 7, 10];
+  else if (quality === "half-diminished") intervals = [0, 3, 6, 10];
   
   return intervals.map(i => (rootIdx + i) % 12);
 }
@@ -409,17 +477,17 @@ export function getChordTones(rootIdx: number, quality: "major" | "minor" | "dom
 export function getIIVI(rootIdx: number, quality: string) {
   const getNoteName = (idx: number) => ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"][(idx % 12 + 12) % 12];
 
-  if (quality === "major") {
+  if (quality === "major" || quality === "dominant") {
     return [
-      { rootIdx: (rootIdx + 2) % 12, quality: "minor", name: `${getNoteName(rootIdx + 2)}m7` },
-      { rootIdx: (rootIdx + 7) % 12, quality: "dominant", name: `${getNoteName(rootIdx + 7)}7` },
-      { rootIdx: rootIdx, quality: "major", name: `${getNoteName(rootIdx)}maj7` }
+      { rootIdx: (rootIdx + 2) % 12, quality: "minor", name: `${getNoteName(rootIdx + 2)}m7`, intervals: [0, 3, 7, 10] },
+      { rootIdx: (rootIdx + 7) % 12, quality: "dominant", name: `${getNoteName(rootIdx + 7)}7`, intervals: [0, 4, 7, 10] },
+      { rootIdx: rootIdx, quality: quality, name: `${getNoteName(rootIdx)}${quality === "major" ? "maj7" : "7"}`, intervals: quality === "major" ? [0, 4, 7, 11] : [0, 4, 7, 10] }
     ];
-  } else if (quality === "minor") {
+  } else if (quality === "minor" || quality === "half-diminished") {
     return [
-      { rootIdx: (rootIdx + 2) % 12, quality: "half-diminished", name: `${getNoteName(rootIdx + 2)}m7b5` },
-      { rootIdx: (rootIdx + 7) % 12, quality: "dominant", name: `${getNoteName(rootIdx + 7)}7` },
-      { rootIdx: rootIdx, quality: "minor", name: `${getNoteName(rootIdx)}m7` }
+      { rootIdx: (rootIdx + 2) % 12, quality: "half-diminished", name: `${getNoteName(rootIdx + 2)}m7b5`, intervals: [0, 3, 6, 10] },
+      { rootIdx: (rootIdx + 7) % 12, quality: "dominant", name: `${getNoteName(rootIdx + 7)}7`, intervals: [0, 4, 7, 10] },
+      { rootIdx: rootIdx, quality: quality, name: `${getNoteName(rootIdx)}${quality === "minor" ? "m7" : "m7b5"}`, intervals: quality === "minor" ? [0, 3, 7, 10] : [0, 3, 6, 10] }
     ];
   }
   return null;

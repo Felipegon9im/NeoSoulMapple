@@ -12,6 +12,7 @@ import {
 import { playChord, playLick, playProgression } from "../lib/audio";
 import { ChordDiagram } from "./ChordDiagram";
 import { Fretboard } from "./Fretboard";
+import { IIVIVisualizer } from "./IIVIVisualizer";
 import { motion } from "motion/react";
 import { Play, Volume2 } from "lucide-react";
 
@@ -54,7 +55,7 @@ export function ChordCard({ chordStr }: ChordCardProps) {
             {data.original}
           </h2>
           <button
-            onClick={() => playChord(data.rootIdx, data.quality)}
+            onClick={() => playChord(data.rootIdx, data.quality, data.intervals)}
             className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-teal-400 transition-colors"
             title="Ouvir Acorde"
           >
@@ -107,33 +108,11 @@ export function ChordCard({ chordStr }: ChordCardProps) {
       </div>
 
       {iiVIProgression && (
-        <div className="mb-6 bg-black/30 border border-white/5 rounded-xl p-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-            <div className="text-xs text-white uppercase tracking-widest flex items-center gap-2">
-              <div className="w-1 h-3 bg-teal-400 rounded-full"></div>
-              Progressão II-V-I (Preparação)
-            </div>
-            <button
-              onClick={() => playProgression(iiVIProgression, bpm, beatsPerMeasure)}
-              className="flex items-center gap-2 text-teal-400 hover:text-teal-300 bg-teal-400/10 hover:bg-teal-400/20 px-3 py-1.5 rounded-lg transition-colors text-xs font-bold uppercase tracking-wider"
-            >
-              <Play size={14} />
-              <span>Ouvir Progressão</span>
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {iiVIProgression.map((c, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <div className="px-4 py-2 bg-white/10 border border-white/5 rounded-lg font-bold text-amber-400">
-                  {c.name}
-                </div>
-                {i < iiVIProgression.length - 1 && (
-                  <div className="text-zinc-600 font-bold">→</div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+        <IIVIVisualizer 
+          progression={iiVIProgression} 
+          bpm={bpm} 
+          beatsPerMeasure={beatsPerMeasure} 
+        />
       )}
 
       <div className="mb-6">

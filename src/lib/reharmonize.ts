@@ -4,6 +4,7 @@ export interface ReharmonizedProgressions {
   neoSoul: string[];
   jazz: string[];
   gospel: string[];
+  modal: string[];
 }
 
 function getNoteName(rootIdx: number): string {
@@ -18,12 +19,13 @@ export function reharmonize(chords: string[]): ReharmonizedProgressions {
   const parsedChords = chords.map(c => parseChord(c)).filter(Boolean) as NonNullable<ReturnType<typeof parseChord>>[];
   
   if (parsedChords.length === 0) {
-    return { neoSoul: [], jazz: [], gospel: [] };
+    return { neoSoul: [], jazz: [], gospel: [], modal: [] };
   }
 
   const neoSoul: string[] = [];
   const jazz: string[] = [];
   const gospel: string[] = [];
+  const modal: string[] = [];
 
   for (let i = 0; i < parsedChords.length; i++) {
     const current = parsedChords[i];
@@ -35,27 +37,33 @@ export function reharmonize(chords: string[]): ReharmonizedProgressions {
     let extNeo = rootName;
     let extJazz = rootName;
     let extGospel = rootName;
+    let extModal = rootName;
 
     if (current.quality === 'major') {
       extNeo += 'maj9';
       extJazz += 'maj9';
       extGospel += 'maj9';
+      extModal += 'maj7';
     } else if (current.quality === 'minor') {
       extNeo += 'm11';
       extJazz += 'm9';
       extGospel += 'm9';
+      extModal += 'm7';
     } else if (current.quality === 'dominant') {
       extNeo += '9';
       extJazz += '13';
       extGospel += '13';
+      extModal += '7';
     } else if (current.quality === 'half-diminished') {
       extNeo += 'm7b5';
       extJazz += 'm7b5';
       extGospel += 'm7b5';
+      extModal += 'm7b5';
     } else {
       extNeo = current.original;
       extJazz = current.original;
       extGospel = current.original;
+      extModal = current.original;
     }
 
     // Push the extended chord as the base for this position
@@ -64,6 +72,7 @@ export function reharmonize(chords: string[]): ReharmonizedProgressions {
     let addedNeo = false;
     let addedJazz = false;
     let addedGospel = false;
+    let addedModal = false;
 
     if (next) {
       const dist = getDistance(current.rootIdx, next.rootIdx);
@@ -128,12 +137,39 @@ export function reharmonize(chords: string[]): ReharmonizedProgressions {
         gospel.push(`${vName}7#9`); // E7#9 -> Am
         addedGospel = true;
       }
+
+      // --- MODAL INTERCHANGE ---
+      if (dist === 5 && current.quality === 'dominant') { // V7 -> I
+        // Replace V7 with bVImaj7 -> bVII7 (Mario Bros cadence approach)
+        const bVI = (next.rootIdx + 8) % 12;
+        const bVII = (next.rootIdx + 10) % 12;
+        modal.push(`${getNoteName(bVI)}maj7`, `${getNoteName(bVII)}7`);
+        addedModal = true;
+      } else if (dist === 7 && current.quality === 'major') { // IV -> I (e.g. F -> C)
+        modal.push(extModal);
+        // Add ivm6 (minor subdominant)
+        modal.push(`${getNoteName(current.rootIdx)}m6`);
+        addedModal = true;
+      } else if (dist === 2) { // I -> ii (e.g. C -> Dm)
+        modal.push(extModal);
+        // Add bIIImaj7 of current
+        const bIII = (current.rootIdx + 3) % 12;
+        modal.push(`${getNoteName(bIII)}maj7`);
+        addedModal = true;
+      } else if (dist === 9) { // I -> vi (e.g. C -> Am)
+        modal.push(extModal);
+        // Add bVImaj7 of current
+        const bVI = (current.rootIdx + 8) % 12;
+        modal.push(`${getNoteName(bVI)}maj7`);
+        addedModal = true;
+      }
     }
 
     if (!addedNeo) neoSoul.push(extNeo);
     if (!addedJazz) jazz.push(extJazz);
     if (!addedGospel) gospel.push(extGospel);
+    if (!addedModal) modal.push(extModal);
   }
 
-  return { neoSoul, jazz, gospel };
+  return { neoSoul, jazz, gospel, modal };
 }
