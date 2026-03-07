@@ -1,21 +1,43 @@
-import React, { useState } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { ChordInput } from "./components/ChordInput";
 import { ChordCard } from "./components/ChordCard";
 import { FavoritesView } from "./components/FavoritesView";
-import { ProgressionPlayer } from "./components/ProgressionPlayer";
+import { PlayerPanel } from "./components/PlayerPanel";
 import { Reharmonizer } from "./components/Reharmonizer";
 import { StudyProgressions } from "./components/StudyProgressions";
+import { AdvancedHarmonicGPS } from "./components/AdvancedHarmonicGPS";
 import { motion } from "motion/react";
 import { Search, Heart } from "lucide-react";
+import { parseChord } from "./lib/chordLibrary";
 
 export default function App() {
   const [progression, setProgression] = useState("Dmaj7 C11 Em11 Ebmaj7#11");
   const [view, setView] = useState<"search" | "favorites">("search");
+  const [playerSequence, setPlayerSequence] = useState<any[]>([]);
+  const [playerIndex, setPlayerIndex] = useState(-1);
 
-  const chords = progression.split(/[\s,]+/).filter((c) => c.length > 0);
+  const chords = useMemo(() => progression.split(/[\s,]+/).filter((c) => c.length > 0), [progression]);
+  
+  const handleStateChange = useCallback((seq: any[], idx: number) => {
+    setPlayerSequence(seq);
+    setPlayerIndex(idx);
+  }, []);
+
+  const sequence = playerSequence.length > 0 ? playerSequence : chords.map(chordStr => {
+    const data = parseChord(chordStr);
+    if (!data) return null;
+    return {
+      rootIdx: data.rootIdx,
+      quality: data.quality,
+      name: data.original,
+      isPrep: false,
+      beats: 4,
+      intervals: data.intervals
+    };
+  }).filter(Boolean) as any[];
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white font-sans selection:bg-purple-500/30">
+    <div className="min-h-screen bg-zinc-950 text-white font-sans selection:bg-purple-500/30 pb-32">
       {/* Background effects */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-purple-600/10 rounded-full blur-[120px]"></div>
@@ -60,10 +82,7 @@ export default function App() {
           {view === 'search' && (
             <div className="w-full max-w-4xl flex flex-col items-center gap-4">
               <ChordInput value={progression} onChange={setProgression} />
-              <StudyProgressions onSelect={(chords) => {
-                setProgression(chords);
-                // Also trigger search immediately if possible, but since ChordInput handles parsing via useEffect, setting progression is enough.
-              }} />
+              <StudyProgressions onSelect={setProgression} />
             </div>
           )}
         </motion.div>
@@ -71,8 +90,8 @@ export default function App() {
         {view === 'search' ? (
           <div className="w-full max-w-4xl flex flex-col gap-8">
             {chords.length > 0 && (
-              <div className="flex flex-col gap-4">
-                <ProgressionPlayer chords={chords} />
+              <div className="flex flex-col gap-8">
+                <AdvancedHarmonicGPS sequence={sequence} currentIndex={playerIndex} />
                 <Reharmonizer chords={chords} onApply={setProgression} />
               </div>
             )}
@@ -89,6 +108,15 @@ export default function App() {
           <FavoritesView />
         )}
       </div>
+
+      {/* Fixed Bottom Player Panel */}
+      {view === 'search' && chords.length > 0 && (
+        <PlayerPanel 
+          chords={chords} 
+          setProgression={setProgression} 
+          onStateChange={handleStateChange}
+        />
+      )}
     </div>
   );
 }

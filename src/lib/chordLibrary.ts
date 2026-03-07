@@ -493,6 +493,55 @@ export function getIIVI(rootIdx: number, quality: string) {
   return null;
 }
 
+export function getSubV7(rootIdx: number, quality: string) {
+  const getNoteName = (idx: number) => ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"][(idx % 12 + 12) % 12];
+  
+  if (quality === "major" || quality === "dominant") {
+    return [
+      { rootIdx: (rootIdx + 2) % 12, quality: "minor", name: `${getNoteName(rootIdx + 2)}m7`, intervals: [0, 3, 7, 10] },
+      { rootIdx: (rootIdx + 1) % 12, quality: "dominant", name: `${getNoteName(rootIdx + 1)}7`, intervals: [0, 4, 7, 10] },
+      { rootIdx: rootIdx, quality: quality, name: `${getNoteName(rootIdx)}${quality === "major" ? "maj7" : "7"}`, intervals: quality === "major" ? [0, 4, 7, 11] : [0, 4, 7, 10] }
+    ];
+  } else if (quality === "minor" || quality === "half-diminished") {
+    return [
+      { rootIdx: (rootIdx + 2) % 12, quality: "half-diminished", name: `${getNoteName(rootIdx + 2)}m7b5`, intervals: [0, 3, 6, 10] },
+      { rootIdx: (rootIdx + 1) % 12, quality: "dominant", name: `${getNoteName(rootIdx + 1)}7`, intervals: [0, 4, 7, 10] },
+      { rootIdx: rootIdx, quality: quality, name: `${getNoteName(rootIdx)}${quality === "minor" ? "m7" : "m7b5"}`, intervals: quality === "minor" ? [0, 3, 7, 10] : [0, 3, 6, 10] }
+    ];
+  }
+  return null;
+}
+
+export function getSecondaryDominant(rootIdx: number, quality: string) {
+  const getNoteName = (idx: number) => ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"][(idx % 12 + 12) % 12];
+  
+  if (quality === "major" || quality === "dominant") {
+    return [
+      { rootIdx: (rootIdx + 7) % 12, quality: "dominant", name: `${getNoteName(rootIdx + 7)}7`, intervals: [0, 4, 7, 10] },
+      { rootIdx: rootIdx, quality: quality, name: `${getNoteName(rootIdx)}${quality === "major" ? "maj7" : "7"}`, intervals: quality === "major" ? [0, 4, 7, 11] : [0, 4, 7, 10] }
+    ];
+  } else if (quality === "minor" || quality === "half-diminished") {
+    return [
+      { rootIdx: (rootIdx + 7) % 12, quality: "dominant", name: `${getNoteName(rootIdx + 7)}7`, intervals: [0, 4, 7, 10] },
+      { rootIdx: rootIdx, quality: quality, name: `${getNoteName(rootIdx)}${quality === "minor" ? "m7" : "m7b5"}`, intervals: quality === "minor" ? [0, 3, 7, 10] : [0, 3, 6, 10] }
+    ];
+  }
+  return null;
+}
+
+export function getBackdoor(rootIdx: number, quality: string) {
+  const getNoteName = (idx: number) => ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"][(idx % 12 + 12) % 12];
+  
+  if (quality === "major" || quality === "dominant") {
+    return [
+      { rootIdx: (rootIdx + 5) % 12, quality: "minor", name: `${getNoteName(rootIdx + 5)}m7`, intervals: [0, 3, 7, 10] },
+      { rootIdx: (rootIdx + 10) % 12, quality: "dominant", name: `${getNoteName(rootIdx + 10)}7`, intervals: [0, 4, 7, 10] },
+      { rootIdx: rootIdx, quality: quality, name: `${getNoteName(rootIdx)}${quality === "major" ? "maj7" : "7"}`, intervals: quality === "major" ? [0, 4, 7, 11] : [0, 4, 7, 10] }
+    ];
+  }
+  return null;
+}
+
 export function getMajorScaleIndices(rootIndex: number) {
   return [0, 2, 4, 5, 7, 9, 11].map((i) => (rootIndex + i) % 12);
 }

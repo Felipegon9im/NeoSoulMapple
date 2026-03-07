@@ -141,21 +141,62 @@ export function analyzeChord(chordName: string, keyRootIdx: number, keyQuality: 
   };
 }
 
+export function romanToChord(roman: string, keyRootIdx: number, keyQuality: 'major' | 'minor'): string {
+  const noteNames = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
+  
+  let interval = 0;
+  let cleanRoman = roman;
+  
+  if (roman.startsWith('#IV')) { interval = 6; cleanRoman = roman.substring(3); }
+  else if (roman.startsWith('bII')) { interval = 1; cleanRoman = roman.substring(3); }
+  else if (roman.startsWith('bIII')) { interval = 3; cleanRoman = roman.substring(4); }
+  else if (roman.startsWith('bVI')) { interval = 8; cleanRoman = roman.substring(3); }
+  else if (roman.startsWith('bVII')) { interval = 10; cleanRoman = roman.substring(4); }
+  else if (roman.startsWith('bV')) { interval = 6; cleanRoman = roman.substring(2); }
+  else if (roman.startsWith('VII')) { interval = 11; cleanRoman = roman.substring(3); }
+  else if (roman.startsWith('VI')) { interval = 9; cleanRoman = roman.substring(2); }
+  else if (roman.startsWith('IV')) { interval = 5; cleanRoman = roman.substring(2); }
+  else if (roman.startsWith('V')) { interval = 7; cleanRoman = roman.substring(1); }
+  else if (roman.startsWith('III')) { interval = 4; cleanRoman = roman.substring(3); }
+  else if (roman.startsWith('II')) { interval = 2; cleanRoman = roman.substring(2); }
+  else if (roman.startsWith('I')) { interval = 0; cleanRoman = roman.substring(1); }
+
+  const rootNote = noteNames[(keyRootIdx + interval) % 12];
+  return rootNote + cleanRoman;
+}
+
 export function detectKey(chords: string[]): { rootIdx: number, quality: 'major' | 'minor' } {
   if (chords.length === 0) return { rootIdx: 0, quality: 'major' };
   
-  // Simple heuristic: look at the last chord
-  const lastChord = chords[chords.length - 1];
-  const match = lastChord.match(/^([A-G][b#]?)(.*)$/i);
-  if (!match) return { rootIdx: 0, quality: 'major' };
-  
-  const rootIdx = getNoteIndex(match[1]);
-  const ext = match[2].toLowerCase();
-  
-  let quality: 'major' | 'minor' = 'major';
-  if (ext.startsWith('m') && !ext.startsWith('maj') || ext.includes('min') || ext.includes('-')) {
-    quality = 'minor';
+  const parseChordStr = (chord: string) => {
+    const match = chord.match(/^([A-G][b#]?)(.*)$/i);
+    if (!match) return { rootIdx: 0, quality: 'major' as 'major' | 'minor' };
+    const rootIdx = getNoteIndex(match[1]);
+    const ext = match[2].toLowerCase();
+    let quality: 'major' | 'minor' = 'major';
+    if (ext.startsWith('m') && !ext.startsWith('maj') || ext.includes('min') || ext.includes('-')) {
+      quality = 'minor';
+    }
+    return { rootIdx, quality };
+  };
+
+  const first = parseChordStr(chords[0]);
+  const last = parseChordStr(chords[chords.length - 1]);
+
+  // If it starts and ends on the same chord, that's definitely the key
+  if (first.rootIdx === last.rootIdx && first.quality === last.quality) {
+    return first;
   }
-  
-  return { rootIdx, quality };
+
+  // Check for V -> I resolution at the end
+  if (chords.length >= 2) {
+    const secondToLast = parseChordStr(chords[chords.length - 2]);
+    // If second to last is V of last (interval of 7 semitones up, or 5 down)
+    if ((secondToLast.rootIdx + 5) % 12 === last.rootIdx) {
+      return last;
+    }
+  }
+
+  // Default to the first chord, which usually establishes the key in most popular music
+  return first;
 }
