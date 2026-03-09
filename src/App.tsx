@@ -6,13 +6,14 @@ import { PlayerPanel } from "./components/PlayerPanel";
 import { Reharmonizer } from "./components/Reharmonizer";
 import { StudyProgressions } from "./components/StudyProgressions";
 import { AdvancedHarmonicGPS } from "./components/AdvancedHarmonicGPS";
+import { AudioAnalyzerView } from "./components/AudioAnalyzerView";
 import { motion } from "motion/react";
-import { Search, Heart } from "lucide-react";
+import { Search, Heart, Activity } from "lucide-react";
 import { parseChord } from "./lib/chordLibrary";
 
 export default function App() {
   const [progression, setProgression] = useState("Dmaj7 C11 Em11 Ebmaj7#11");
-  const [view, setView] = useState<"search" | "favorites">("search");
+  const [view, setView] = useState<"search" | "favorites" | "analyzer">("search");
   const [playerSequence, setPlayerSequence] = useState<any[]>([]);
   const [playerIndex, setPlayerIndex] = useState(-1);
 
@@ -23,18 +24,21 @@ export default function App() {
     setPlayerIndex(idx);
   }, []);
 
-  const sequence = playerSequence.length > 0 ? playerSequence : chords.map(chordStr => {
-    const data = parseChord(chordStr);
-    if (!data) return null;
-    return {
-      rootIdx: data.rootIdx,
-      quality: data.quality,
-      name: data.original,
-      isPrep: false,
-      beats: 4,
-      intervals: data.intervals
-    };
-  }).filter(Boolean) as any[];
+  const sequence = useMemo(() => {
+    if (playerSequence.length > 0) return playerSequence;
+    return chords.map(chordStr => {
+      const data = parseChord(chordStr);
+      if (!data) return null;
+      return {
+        rootIdx: data.rootIdx,
+        quality: data.quality,
+        name: data.original,
+        isPrep: false,
+        beats: 4,
+        intervals: data.intervals
+      };
+    }).filter(Boolean) as any[];
+  }, [playerSequence, chords]);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white font-sans selection:bg-purple-500/30 pb-32">
@@ -64,12 +68,18 @@ export default function App() {
           transition={{ delay: 0.1 }}
           className="w-full mb-12 flex flex-col items-center"
         >
-          <div className="flex bg-zinc-900/80 p-1 rounded-full border border-white/10 mb-8">
+          <div className="flex bg-zinc-900/80 p-1 rounded-full border border-white/10 mb-8 flex-wrap justify-center gap-1">
             <button 
               onClick={() => setView('search')}
               className={`flex items-center gap-2 px-6 py-2 rounded-full text-sm font-bold transition-colors ${view === 'search' ? 'bg-purple-500 text-white' : 'text-zinc-400 hover:text-white'}`}
             >
               <Search size={16} /> Buscar
+            </button>
+            <button 
+              onClick={() => setView('analyzer')}
+              className={`flex items-center gap-2 px-6 py-2 rounded-full text-sm font-bold transition-colors ${view === 'analyzer' ? 'bg-indigo-500 text-white' : 'text-zinc-400 hover:text-white'}`}
+            >
+              <Activity size={16} /> Analisar Áudio
             </button>
             <button 
               onClick={() => setView('favorites')}
@@ -87,7 +97,7 @@ export default function App() {
           )}
         </motion.div>
 
-        {view === 'search' ? (
+        {view === 'search' && (
           <div className="w-full max-w-4xl flex flex-col gap-8">
             {chords.length > 0 && (
               <div className="flex flex-col gap-8">
@@ -104,9 +114,11 @@ export default function App() {
               </div>
             )}
           </div>
-        ) : (
-          <FavoritesView />
         )}
+        
+        {view === 'favorites' && <FavoritesView />}
+        
+        {view === 'analyzer' && <AudioAnalyzerView />}
       </div>
 
       {/* Fixed Bottom Player Panel */}
